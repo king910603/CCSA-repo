@@ -12,6 +12,13 @@ SERVER_IP   = "192.168.56.10"
 AGENT_IP    = "192.168.56.11"
 BOX         = "bento/ubuntu-24.04"
 
+# Vagrant for Windows is an x64 program, so on Windows-on-ARM laptops its
+# :auto detection picks the amd64 box. Ask Windows for the real CPU instead;
+# HW3_BOX_ARCH (arm64/amd64) overrides the choice.
+BOX_ARCH = ENV.fetch("HW3_BOX_ARCH") do
+  ENV["PROCESSOR_IDENTIFIER"].to_s.start_with?("ARM") ? "arm64" : :auto
+end
+
 # State shared between the host and both VMs (join token, kubeconfig, image
 # tarball). It lives in the synced folder, so the guests see it at
 # /vagrant/.cluster.
@@ -23,6 +30,7 @@ K3S_TOKEN = File.read(TOKEN_FILE).strip
 
 Vagrant.configure("2") do |config|
   config.vm.box = BOX
+  config.vm.box_architecture = BOX_ARCH
   config.vm.box_check_update = false
 
   config.vm.provider "virtualbox" do |vb|
