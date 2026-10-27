@@ -8,6 +8,14 @@ source /vagrant/scripts/lib.sh
 KUBECTL=(k3s kubectl --kubeconfig "$CLUSTER_DIR/kubeconfig")
 APP_URL="http://$SERVER_IP:30080"
 
+show_state_on_failure() {
+    log "Deployment did not become ready; current state:"
+    "${KUBECTL[@]}" get nodes -o wide || true
+    "${KUBECTL[@]}" -n hw3 get pods,services,pvc -o wide || true
+    "${KUBECTL[@]}" -n hw3 get events --sort-by=.lastTimestamp | tail -20 || true
+}
+trap show_state_on_failure ERR
+
 two_nodes_ready() {
     [[ $("${KUBECTL[@]}" get nodes --no-headers 2>/dev/null | awk '$2 == "Ready"' | wc -l) -eq 2 ]]
 }
