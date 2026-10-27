@@ -1,0 +1,4 @@
+# Scripts and manifests run inside Linux VMs: always check out with LF.
+* text=auto eol=lf
+*.pdf binary
+*.png binary
