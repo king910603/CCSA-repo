@@ -1,0 +1,60 @@
+services:
+  database:
+    build: ./database
+    environment:
+      DATABASE_PATH: /data/names.db
+    volumes:
+      - sqlite_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "sqlite3 /data/names.db 'SELECT 1 FROM names LIMIT 1;' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_PATH: /data/names.db
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+    networks:
+      - app_network
+
+volumes:
+  sqlite_data:
+
+networks:
+  app_network:
+    driver: bridge
+

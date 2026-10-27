@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# SQLite runtime files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Local configuration and OS files
+.env
+.DS_Store
+Thumbs.db
+
+# Submission archives
+*.zip
+
+
+# Course handout (not redistributed)
+Homework3.pdf

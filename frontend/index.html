@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Name List · Docker Compose</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <p class="eyebrow">CCSA · Homework #3</p>
+      <h1>Name List</h1>
+      <p class="subtitle">A three-tier application powered by Nginx, Flask, and SQLite.</p>
+    </header>
+
+    <section class="card" aria-labelledby="actions-heading">
+      <h2 id="actions-heading">Name operations</h2>
+      <form id="name-form">
+        <label for="name-input">Name</label>
+        <input id="name-input" name="name" type="text" maxlength="100"
+               placeholder="Enter a name to add or delete" autocomplete="off">
+        <div class="action-row">
+          <button id="add-button" type="submit">Add name</button>
+          <button id="query-button" class="secondary" type="button">Get names</button>
+          <button id="delete-button" class="danger" type="button">Delete name</button>
+        </div>
+      </form>
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card" aria-labelledby="list-heading">
+      <div class="section-heading">
+        <h2 id="list-heading">Saved names</h2>
+      </div>
+      <p id="empty-state" class="empty">Select “Get names” to query the database.</p>
+      <ul id="name-list" aria-live="polite"></ul>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
