@@ -1,0 +1,14 @@
+# Provisioned by K3s's built-in local-path provisioner: the volume lives on the
+# disk of the node that runs the db Pod (/var/lib/rancher/k3s/storage).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: hw3
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
