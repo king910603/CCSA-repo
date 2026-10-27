@@ -4,12 +4,9 @@ __pycache__/
 .pytest_cache/
 .venv/
 
-# SQLite runtime files
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+# Vagrant machine state and shared cluster state (token, kubeconfig, images)
+.vagrant/
+.cluster/
 
 # Local configuration and OS files
 .env
@@ -18,7 +15,6 @@ Thumbs.db
 
 # Submission archives
 *.zip
-
 
 # Course handout (not redistributed)
 Homework3.pdf
