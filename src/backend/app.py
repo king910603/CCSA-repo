@@ -1,53 +1,75 @@
 import os
-import sqlite3
-from pathlib import Path
+import time
 
+import psycopg
 from flask import Flask, jsonify, request
+from psycopg.conninfo import make_conninfo
+from psycopg.rows import dict_row
 
 
-DEFAULT_DATABASE_PATH = (
-    "/data/names.db"
-    if Path("/data").is_dir()
-    else str(Path(__file__).resolve().parent / "data" / "names.db")
+# Return timestamps in the same "YYYY-MM-DD HH:MM:SS" (UTC) shape that the
+# HW2 SQLite version produced, so the frontend does not need to change.
+ROW_COLUMNS = (
+    "id, name, "
+    "to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS created_at"
 )
 
-
-def get_connection(database_path):
-    connection = sqlite3.connect(database_path, timeout=10)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute("PRAGMA busy_timeout = 10000")
-    return connection
+# Arbitrary key so concurrent Gunicorn workers do not race on CREATE TABLE.
+SCHEMA_LOCK_ID = 20261027
 
 
-def ensure_schema(database_path):
-    Path(database_path).parent.mkdir(parents=True, exist_ok=True)
-    with get_connection(database_path) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS names (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-
-
-def create_app(database_path=None):
-    app = Flask(__name__)
-    app.config["DATABASE_PATH"] = database_path or os.getenv(
-        "DATABASE_PATH", DEFAULT_DATABASE_PATH
+def database_url_from_env():
+    if os.getenv("DATABASE_URL"):
+        return os.environ["DATABASE_URL"]
+    return make_conninfo(
+        host=os.getenv("DB_HOST", "db"),
+        port=os.getenv("DB_PORT", "5432"),
+        dbname=os.getenv("DB_NAME", "names"),
+        user=os.getenv("DB_USER", "names"),
+        password=os.getenv("DB_PASSWORD", ""),
+        connect_timeout=5,
     )
-    ensure_schema(app.config["DATABASE_PATH"])
+
+
+def get_connection(database_url):
+    return psycopg.connect(database_url, row_factory=dict_row)
+
+
+def ensure_schema(database_url, attempts=30, delay=2):
+    # The api Pod may start before PostgreSQL accepts connections.
+    for attempt in range(1, attempts + 1):
+        try:
+            with get_connection(database_url) as connection:
+                connection.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK_ID,))
+                connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS names (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                    """
+                )
+            return
+        except psycopg.OperationalError as exc:
+            if attempt == attempts:
+                raise
+            print(f"Database not ready (attempt {attempt}/{attempts}): {exc}", flush=True)
+            time.sleep(delay)
+
+
+def create_app(database_url=None):
+    app = Flask(__name__)
+    app.config["DATABASE_URL"] = database_url or database_url_from_env()
+    ensure_schema(app.config["DATABASE_URL"])
 
     @app.get("/health")
     def health():
         try:
-            with get_connection(app.config["DATABASE_PATH"]) as connection:
+            with get_connection(app.config["DATABASE_URL"]) as connection:
                 connection.execute("SELECT 1 FROM names LIMIT 1").fetchone()
             return jsonify(status="healthy")
-        except sqlite3.Error as exc:
+        except psycopg.Error as exc:
             return jsonify(status="unhealthy", error=str(exc)), 503
 
     @app.post("/api/add_name")
@@ -61,21 +83,20 @@ def create_app(database_path=None):
         if len(name) > 100:
             return jsonify(error="Name must be 100 characters or fewer."), 400
 
-        with get_connection(app.config["DATABASE_PATH"]) as connection:
-            cursor = connection.execute("INSERT INTO names (name) VALUES (?)", (name,))
+        with get_connection(app.config["DATABASE_URL"]) as connection:
             row = connection.execute(
-                "SELECT id, name, created_at FROM names WHERE id = ?", (cursor.lastrowid,)
+                f"INSERT INTO names (name) VALUES (%s) RETURNING {ROW_COLUMNS}", (name,)
             ).fetchone()
 
-        return jsonify(dict(row)), 201
+        return jsonify(row), 201
 
     @app.get("/api/get_names")
     def get_names():
-        with get_connection(app.config["DATABASE_PATH"]) as connection:
+        with get_connection(app.config["DATABASE_URL"]) as connection:
             rows = connection.execute(
-                "SELECT id, name, created_at FROM names ORDER BY id ASC"
+                f"SELECT {ROW_COLUMNS} FROM names ORDER BY id ASC"
             ).fetchall()
-        return jsonify(names=[dict(row) for row in rows])
+        return jsonify(names=rows)
 
     @app.delete("/api/remove_name")
     def remove_name():
@@ -83,12 +104,12 @@ def create_app(database_path=None):
         row_id = payload.get("id")
         name = payload.get("name")
 
-        with get_connection(app.config["DATABASE_PATH"]) as connection:
+        with get_connection(app.config["DATABASE_URL"]) as connection:
             if isinstance(row_id, int) and not isinstance(row_id, bool):
-                cursor = connection.execute("DELETE FROM names WHERE id = ?", (row_id,))
+                cursor = connection.execute("DELETE FROM names WHERE id = %s", (row_id,))
             elif isinstance(name, str) and name.strip():
                 cursor = connection.execute(
-                    "DELETE FROM names WHERE id = (SELECT id FROM names WHERE name = ? ORDER BY id LIMIT 1)",
+                    "DELETE FROM names WHERE id = (SELECT id FROM names WHERE name = %s ORDER BY id LIMIT 1)",
                     (name.strip(),),
                 )
             else:
