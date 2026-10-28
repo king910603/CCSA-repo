@@ -16,6 +16,7 @@ if ! systemctl is-enabled --quiet k3s 2>/dev/null; then
         --write-kubeconfig-mode 644 \
         --disable traefik
 fi
+install_shutdown_hook k3s
 
 wait_for 300 "k3s-server node Ready" \
     sh -c "k3s kubectl get node k3s-server | grep -qw Ready"

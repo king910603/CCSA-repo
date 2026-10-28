@@ -34,7 +34,10 @@ Vagrant.configure("2") do |config|
   config.vm.box_check_update = false
 
   config.vm.provider "virtualbox" do |vb|
-    vb.cpus = 2
+    # One vCPU: with two, the Ubuntu 24.04 guests intermittently hung at boot
+    # on a VirtualBox 7.2 host (RCU stall: the second vCPU stayed in HLT and
+    # missed its wake-up IPI), so `vagrant up` timed out.
+    vb.cpus = 1
     vb.memory = 2048
     vb.linked_clone = true
   end

@@ -13,6 +13,7 @@ if ! systemctl is-enabled --quiet k3s-agent 2>/dev/null; then
         --node-ip "$NODE_IP" \
         --flannel-iface "$IFACE"
 fi
+install_shutdown_hook k3s-agent
 
 wait_for 300 "k3s-agent service active" systemctl is-active --quiet k3s-agent
 log "K3s agent is running"

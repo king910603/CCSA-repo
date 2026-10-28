@@ -21,7 +21,7 @@ See [architecture.pdf](architecture.pdf) for the diagram.
 |---|---|
 | [VirtualBox](https://www.virtualbox.org/wiki/Downloads) 7.1 or newer | 7.2+ for ARM64 hosts (Apple Silicon, Windows on ARM) |
 | [Vagrant](https://developer.hashicorp.com/vagrant/install) 2.4 or newer | Needed for per-architecture boxes |
-| ~4 GB free RAM, ~10 GB disk | Each VM gets 2 vCPU / 2 GB RAM |
+| ~4 GB free RAM, ~10 GB disk | Each VM gets 1 vCPU / 2 GB RAM (two vCPUs made the Ubuntu 24.04 guests hang at boot on some VirtualBox hosts) |
 | Internet access | K3s installer, Ubuntu packages, Docker Hub, PyPI (first `vagrant up` only, plus Docker Hub for `postgres`) |
 | Host-only network 192.168.56.0/24 | VirtualBox's default allowed range; no change needed on a default install |
 
@@ -39,7 +39,7 @@ Run all commands from this directory.
 | Action | Command | What happens |
 |---|---|---|
 | **Start** | `vagrant up` | Creates/boots `k3s-server` then `k3s-agent`, installs K3s on first run, deploys the app and waits until it answers on the NodePort. First run ≈ 10–15 min, later boots ≈ 2–3 min. |
-| **Stop** | `vagrant halt` | Shuts down both VMs. K3s, the images and the PostgreSQL data stay on the VM disks. |
+| **Stop** | `vagrant halt` | Shuts down both VMs; PostgreSQL is stopped cleanly first. K3s, the images and the PostgreSQL data stay on the VM disks. |
 | **Restart** | `vagrant up` | Boots both VMs; K3s starts from systemd and the deploy step re-applies `k8s/` and waits for the app again. No manual reconfiguration. |
 | **Remove** | `vagrant destroy -f` | Deletes both VMs **and all database data**. |
 
@@ -57,9 +57,9 @@ k3s-agent: [k3s-agent] Application is ready: http://192.168.56.10:30080
 
 | Step | Runs on | Script | When |
 |---|---|---|---|
-| 1. Install K3s server (pinned `v1.33.13+k3s1`, Traefik disabled, node IP on the host-only NIC) and export a kubeconfig to `.cluster/kubeconfig` | k3s-server | [scripts/server.sh](scripts/server.sh) | first boot |
+| 1. Install K3s server (pinned `v1.33.13+k3s1`, Traefik disabled, node IP on the host-only NIC) and export a kubeconfig to `.cluster/kubeconfig`; install `hw3-stop-containers.service`, which stops the containers (PostgreSQL included) cleanly on shutdown | k3s-server | [scripts/server.sh](scripts/server.sh) | first boot |
 | 2. Build `hw3-web:1.0` and `hw3-api:1.0` with Docker, save them to `.cluster/hw3-images.tar`, import them into K3s's containerd | k3s-server | [scripts/build-images.sh](scripts/build-images.sh) | every boot; rebuilds only if `src/` changed |
-| 3. Install K3s agent and join `https://192.168.56.10:6443` with the shared token | k3s-agent | [scripts/agent.sh](scripts/agent.sh) | first boot |
+| 3. Install K3s agent and join `https://192.168.56.10:6443` with the shared token; install `hw3-stop-containers.service` | k3s-agent | [scripts/agent.sh](scripts/agent.sh) | first boot |
 | 4. Import the images into the agent's containerd | k3s-agent | [scripts/import-images.sh](scripts/import-images.sh) | every boot; skipped if current |
 | 5. Wait for 2 Ready nodes, `kubectl apply -f k8s/`, wait for the Deployments and for `GET /api/get_names` through the NodePort | k3s-agent | [scripts/deploy.sh](scripts/deploy.sh) | every boot |
 
@@ -191,5 +191,11 @@ git archive --format=zip -o HW3_<StudentID>.zip HEAD README.md Vagrantfile archi
 - **VirtualBox is slow or fails to start VMs on Windows:** Hyper-V-based
   features (WSL 2, Docker Desktop, Memory Integrity) force VirtualBox onto
   the slower Hyper-V backend; disabling them speeds up provisioning.
+- **`vagrant halt` prints "Forcing shutdown of VM":** on some hosts the
+  Ubuntu 24.04 guests stall in systemd's last shutdown step, after every
+  service has stopped and the file systems are unmounted, so Vagrant powers
+  them off after its 60 s timeout. PostgreSQL has already shut down cleanly by
+  then (`kubectl -n hw3 logs deploy/db` after the next boot shows
+  `database system was shut down`), so no data is lost.
 - **The app is not reachable after `vagrant up`:** the deploy step prints the
   Pod status on failure; rerun it with `vagrant provision k3s-agent --provision-with deploy`.
