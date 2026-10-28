@@ -1,0 +1,28 @@
+
+===== 2. Application functionality through the Nginx NodePort =====
+
+$ curl -s -o /dev/null -w "%{http_code}" http://192.168.56.10:30080/
+200
+PASS: web UI served by NodePort at http://192.168.56.10:30080
+
+$ curl -s -o /dev/null -w "%{http_code}" http://192.168.56.11:30080/
+200
+PASS: web UI served by NodePort at http://192.168.56.11:30080
+
+$ POST http://192.168.56.10:30080/api/add_name {"name":"verify-1793168586"}
+{"created_at":"2026-10-28 06:23:06","id":1,"name":"verify-1793168586"}
+
+
+$ GET http://192.168.56.10:30080/api/get_names
+{"names":[{"created_at":"2026-10-28 06:23:06","id":1,"name":"verify-1793168586"}]}
+
+PASS: added name is returned by get_names
+
+$ DELETE http://192.168.56.10:30080/api/remove_name {"name":"verify-1793168586"}
+{"message":"Name removed successfully."}
+
+PASS: deleted name is gone
+
+$ POST http://192.168.56.10:30080/api/add_name {"name":"   "}
+{"error":"Name is required."}
+PASS: blank name is rejected

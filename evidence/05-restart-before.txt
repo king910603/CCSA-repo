@@ -1,0 +1,36 @@
+
+===== 5. Cluster restart (before vagrant halt) =====
+
+===== 1. Cluster startup: both nodes Ready =====
+
+$ kubectl get nodes -o wide
+NAME         STATUS   ROLES                  AGE     VERSION         INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+k3s-agent    Ready    <none>                 71s     v1.33.13+k3s1   192.168.56.11   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
+k3s-server   Ready    control-plane,master   2m42s   v1.33.13+k3s1   192.168.56.10   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
+PASS: 2 of 2 nodes are Ready
+
+$ kubectl -n hw3 get deployments,pods,services,pvc -o wide
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES               SELECTOR
+deployment.apps/api   1/1     1            1           63s   flask        hw3-api:1.0          app=api
+deployment.apps/db    1/1     1            1           63s   postgres     postgres:17-alpine   app=db
+deployment.apps/web   1/1     1            1           63s   nginx        hw3-web:1.0          app=web
+
+NAME                       READY   STATUS    RESTARTS   AGE   IP          NODE        NOMINATED NODE   READINESS GATES
+pod/api-64759b5d89-ktkqz   1/1     Running   0          63s   10.42.1.3   k3s-agent   <none>           <none>
+pod/db-86c87d759c-bfzbx    1/1     Running   0          15s   10.42.1.6   k3s-agent   <none>           <none>
+pod/web-5d5f8ffbc6-pcb79   1/1     Running   0          63s   10.42.1.4   k3s-agent   <none>           <none>
+
+NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+service/api   ClusterIP   10.43.226.135   <none>        5000/TCP       63s   app=api
+service/db    ClusterIP   10.43.31.188    <none>        5432/TCP       63s   app=db
+service/web   NodePort    10.43.49.108    <none>        80:30080/TCP   63s   app=web
+
+NAME                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+persistentvolumeclaim/db-data   Bound    pvc-642d38e9-82f3-40a3-acd9-46668c4f46e0   1Gi        RWO            local-path     <unset>                 63s   Filesystem
+
+$ POST http://192.168.56.10:30080/api/add_name {"name":"restart-1793168603"}
+{"created_at":"2026-10-28 06:23:24","id":3,"name":"restart-1793168603"}
+
+PASS: stored 'restart-1793168603' before restart
+
+Next: run 'vagrant halt', then 'vagrant up', then 'verify.sh restart-after'.
