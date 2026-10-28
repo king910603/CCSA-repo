@@ -2,39 +2,39 @@
 ===== 5. Cluster restart (after vagrant halt + vagrant up) =====
 
 $ uptime
- 07:40:57 up 0 min,  1 user,  load average: 0.63, 0.20, 0.07
+ 10:12:29 up 1 min,  1 user,  load average: 0.35, 0.14, 0.05
 
 ===== 1. Cluster startup: both nodes Ready =====
 
 $ kubectl get nodes -o wide
 NAME         STATUS   ROLES                  AGE     VERSION         INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
-k3s-agent    Ready    <none>                 2m8s    v1.33.13+k3s1   192.168.56.11   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
-k3s-server   Ready    control-plane,master   3m33s   v1.33.13+k3s1   192.168.56.10   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
+k3s-agent    Ready    <none>                 2m27s   v1.33.13+k3s1   192.168.56.11   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
+k3s-server   Ready    control-plane,master   4m1s    v1.33.13+k3s1   192.168.56.10   <none>        Ubuntu 24.04.3 LTS   6.8.0-86-generic   containerd://2.2.5-k3s1.33
 PASS: 2 of 2 nodes are Ready
 
 $ kubectl -n hw3 get deployments,pods,services,pvc -o wide
-NAME                  READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES               SELECTOR
-deployment.apps/api   1/1     1            1           2m    flask        hw3-api:1.0          app=api
-deployment.apps/db    1/1     1            1           2m    postgres     postgres:17-alpine   app=db
-deployment.apps/web   1/1     1            1           2m    nginx        hw3-web:1.0          app=web
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES               SELECTOR
+deployment.apps/api   1/1     1            1           2m18s   flask        hw3-api:1.0          app=api
+deployment.apps/db    1/1     1            1           2m19s   postgres     postgres:17-alpine   app=db
+deployment.apps/web   1/1     1            1           2m18s   nginx        hw3-web:1.0          app=web
 
-NAME                       READY   STATUS    RESTARTS      AGE   IP          NODE        NOMINATED NODE   READINESS GATES
-pod/api-64759b5d89-9djfs   1/1     Running   1 (12s ago)   2m    10.42.1.9   k3s-agent   <none>           <none>
-pod/db-86c87d759c-ccdgs    1/1     Running   1 (12s ago)   83s   10.42.1.8   k3s-agent   <none>           <none>
-pod/web-5d5f8ffbc6-5wq5t   1/1     Running   1 (12s ago)   2m    10.42.1.7   k3s-agent   <none>           <none>
+NAME                       READY   STATUS    RESTARTS      AGE     IP          NODE        NOMINATED NODE   READINESS GATES
+pod/api-64759b5d89-tn6jh   1/1     Running   1 (23s ago)   2m18s   10.42.1.7   k3s-agent   <none>           <none>
+pod/db-86c87d759c-sp8sj    1/1     Running   1 (23s ago)   98s     10.42.1.9   k3s-agent   <none>           <none>
+pod/web-5d5f8ffbc6-s8pjt   1/1     Running   1 (23s ago)   2m18s   10.42.1.8   k3s-agent   <none>           <none>
 
-NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE   SELECTOR
-service/api   ClusterIP   10.43.186.255   <none>        5000/TCP       2m    app=api
-service/db    ClusterIP   10.43.205.35    <none>        5432/TCP       2m    app=db
-service/web   NodePort    10.43.4.172     <none>        80:30080/TCP   2m    app=web
+NAME          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+service/api   ClusterIP   10.43.44.254   <none>        5000/TCP       2m18s   app=api
+service/db    ClusterIP   10.43.47.71    <none>        5432/TCP       2m18s   app=db
+service/web   NodePort    10.43.248.38   <none>        80:30080/TCP   2m18s   app=web
 
-NAME                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
-persistentvolumeclaim/db-data   Bound    pvc-7a4e4f3b-64f5-402c-a79a-81443c9ce725   1Gi        RWO            local-path     <unset>                 2m    Filesystem
+NAME                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
+persistentvolumeclaim/db-data   Bound    pvc-72740ca9-953f-4136-b158-4a800a1fd493   1Gi        RWO            local-path     <unset>                 2m19s   Filesystem
 
 $ GET http://192.168.56.10:30080/api/get_names
-{"names":[{"created_at":"2026-10-28 07:39:34","id":2,"name":"persist-1793173174"},{"created_at":"2026-10-28 07:39:43","id":3,"name":"restart-1793173183"}]}
+{"names":[{"created_at":"2026-10-28 10:10:50","id":2,"name":"persist-1793182250"},{"created_at":"2026-10-28 10:11:01","id":3,"name":"restart-1793182261"}]}
 
-PASS: 'restart-1793173183' stored before the restart is still present
+PASS: 'restart-1793182261' stored before the restart is still present
 
 ===== 2. Application functionality through the Nginx NodePort =====
 
@@ -46,16 +46,16 @@ $ curl -s -o /dev/null -w "%{http_code}" http://192.168.56.11:30080/
 200
 PASS: web UI served by NodePort at http://192.168.56.11:30080
 
-$ POST http://192.168.56.10:30080/api/add_name {"name":"verify-1793173258"}
-{"created_at":"2026-10-28 07:40:58","id":4,"name":"verify-1793173258"}
+$ POST http://192.168.56.10:30080/api/add_name {"name":"verify-1793182349"}
+{"created_at":"2026-10-28 10:12:29","id":4,"name":"verify-1793182349"}
 
 
 $ GET http://192.168.56.10:30080/api/get_names
-{"names":[{"created_at":"2026-10-28 07:39:34","id":2,"name":"persist-1793173174"},{"created_at":"2026-10-28 07:39:43","id":3,"name":"restart-1793173183"},{"created_at":"2026-10-28 07:40:58","id":4,"name":"verify-1793173258"}]}
+{"names":[{"created_at":"2026-10-28 10:10:50","id":2,"name":"persist-1793182250"},{"created_at":"2026-10-28 10:11:01","id":3,"name":"restart-1793182261"},{"created_at":"2026-10-28 10:12:29","id":4,"name":"verify-1793182349"}]}
 
 PASS: added name is returned by get_names
 
-$ DELETE http://192.168.56.10:30080/api/remove_name {"name":"verify-1793173258"}
+$ DELETE http://192.168.56.10:30080/api/remove_name {"name":"verify-1793182349"}
 {"message":"Name removed successfully."}
 
 PASS: deleted name is gone
