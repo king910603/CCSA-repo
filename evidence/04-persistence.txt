@@ -1,30 +1,30 @@
 
 ===== 4. Data persistence across PostgreSQL Pod recreation =====
 
-$ POST http://192.168.56.10:30080/api/add_name {"name":"persist-1793168587"}
-{"created_at":"2026-10-28 06:23:08","id":2,"name":"persist-1793168587"}
+$ POST http://192.168.56.10:30080/api/add_name {"name":"persist-1793173174"}
+{"created_at":"2026-10-28 07:39:34","id":2,"name":"persist-1793173174"}
 
 
-$ kubectl -n hw3 get pod db-86c87d759c-vgcz7 -o wide
+$ kubectl -n hw3 get pod db-86c87d759c-cjcfq -o wide
 NAME                  READY   STATUS    RESTARTS   AGE   IP          NODE        NOMINATED NODE   READINESS GATES
-db-86c87d759c-vgcz7   1/1     Running   0          47s   10.42.1.5   k3s-agent   <none>           <none>
+db-86c87d759c-cjcfq   1/1     Running   0          37s   10.42.1.5   k3s-agent   <none>           <none>
 
-$ kubectl -n hw3 delete pod db-86c87d759c-vgcz7
-pod "db-86c87d759c-vgcz7" deleted
+$ kubectl -n hw3 delete pod db-86c87d759c-cjcfq
+pod "db-86c87d759c-cjcfq" deleted
 
 $ kubectl -n hw3 wait --for=condition=Ready pod -l app=db --timeout=180s
-pod/db-86c87d759c-bfzbx condition met
+pod/db-86c87d759c-ccdgs condition met
 
-$ kubectl -n hw3 get pod db-86c87d759c-bfzbx -o wide
+$ kubectl -n hw3 get pod db-86c87d759c-ccdgs -o wide
 NAME                  READY   STATUS    RESTARTS   AGE   IP          NODE        NOMINATED NODE   READINESS GATES
-db-86c87d759c-bfzbx   1/1     Running   0          7s    10.42.1.6   k3s-agent   <none>           <none>
-PASS: db Pod was recreated (db-86c87d759c-vgcz7 -> db-86c87d759c-bfzbx)
+db-86c87d759c-ccdgs   1/1     Running   0          7s    10.42.1.6   k3s-agent   <none>           <none>
+PASS: db Pod was recreated (db-86c87d759c-cjcfq -> db-86c87d759c-ccdgs)
 
 $ GET http://192.168.56.10:30080/api/get_names
-{"names":[{"created_at":"2026-10-28 06:23:08","id":2,"name":"persist-1793168587"}]}
+{"names":[{"created_at":"2026-10-28 07:39:34","id":2,"name":"persist-1793173174"}]}
 
-PASS: 'persist-1793168587' survived Pod recreation
+PASS: 'persist-1793173174' survived Pod recreation
 
 $ kubectl get pv
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM         STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
-pvc-642d38e9-82f3-40a3-acd9-46668c4f46e0   1Gi        RWO            Delete           Bound    hw3/db-data   local-path     <unset>                          46s
+pvc-7a4e4f3b-64f5-402c-a79a-81443c9ce725   1Gi        RWO            Delete           Bound    hw3/db-data   local-path     <unset>                          34s
