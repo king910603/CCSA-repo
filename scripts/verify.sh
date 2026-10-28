@@ -80,7 +80,10 @@ check_app() {
     has_name "$name" && fail "name still present after delete" || pass "deleted name is gone"
 
     printf '\n$ POST %s/api/add_name {"name":"   "}\n' "$APP_URL"
-    api POST /api/add_name '{"name":"   "}'; echo
+    local rejected
+    rejected=$(api POST /api/add_name '{"name":"   "}')
+    echo "$rejected"
+    [[ $rejected == *'"error"'* ]] && pass "blank name is rejected" || fail "blank name was accepted"
 }
 
 check_connectivity() {
